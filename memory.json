@@ -1,0 +1,46 @@
+[
+  {
+    "id": "bc131527",
+    "key": "database",
+    "value": "Database dùng PostgreSQL",
+    "status": "active",
+    "created_at": "2026-10-21T16:50:39+00:00",
+    "source_session": "S1-thong-nhat"
+  },
+  {
+    "id": "f551b94c",
+    "key": "language",
+    "value": "Ngôn ngữ chính của dự án là TypeScript",
+    "status": "active",
+    "created_at": "2026-10-21T16:50:39+00:00",
+    "source_session": "S1-thong-nhat"
+  },
+  {
+    "id": "0ffce667",
+    "key": "api_naming",
+    "value": "API route đặt theo kebab-case dạng số nhiều, vd /user-profiles",
+    "status": "active",
+    "created_at": "2026-10-21T16:50:39+00:00",
+    "source_session": "S1-thong-nhat"
+  },
+  {
+    "id": "b41135b3",
+    "key": "auth",
+    "value": "Authentication dùng JWT",
+    "status": "superseded",
+    "created_at": "2026-10-21T16:50:39+00:00",
+    "source_session": "S1-thong-nhat",
+    "superseded_at": "2026-10-21T16:50:47+00:00",
+    "superseded_by": "9ccefade",
+    "superseded_in_session": "S3-doi-quy-uoc"
+  },
+  {
+    "id": "9ccefade",
+    "key": "auth",
+    "value": "Authentication dùng session cookie httpOnly (không dùng JWT nữa), session lưu trong PostgreSQL",
+    "status": "active",
+    "created_at": "2026-10-21T16:50:47+00:00",
+    "source_session": "S3-doi-quy-uoc",
+    "supersedes": "b41135b3"
+  }
+]

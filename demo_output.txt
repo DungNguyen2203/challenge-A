@@ -1,0 +1,188 @@
+
+========== S1-thong-nhat ==========
+[INJECTED MEMORY]
+(chưa có memory nào)
+[/INJECTED MEMORY]
+
+USER> Chốt quy ước dự án: database PostgreSQL, ngôn ngữ TypeScript, API route dạng kebab-case số nhiều (vd /user-profiles), authentication dùng JWT.
+  [tool remember] Đã lưu [database] = 'Database dùng PostgreSQL'.
+  [tool remember] Đã lưu [language] = 'Ngôn ngữ chính của dự án là TypeScript'.
+  [tool remember] Đã lưu [api_naming] = 'API route đặt theo kebab-case dạng số nhiều, vd /user-profiles'.
+  [tool remember] Đã lưu [auth] = 'Authentication dùng JWT'.
+AGENT> Đã lưu 4 quy ước:
+- **database**: PostgreSQL
+- **language**: TypeScript
+- **api_naming**: kebab-case số nhiều (`/user-profiles`)
+- **auth**: JWT
+
+========== S2-chung-minh-1 ==========
+[INJECTED MEMORY]
+- [api_naming] API route đặt theo kebab-case dạng số nhiều, vd /user-profiles  (từ S1-thong-nhat, 2026-10-21T16:50:39+00:00)
+- [auth] Authentication dùng JWT  (từ S1-thong-nhat, 2026-10-21T16:50:39+00:00)
+- [database] Database dùng PostgreSQL  (từ S1-thong-nhat, 2026-10-21T16:50:39+00:00)
+- [language] Ngôn ngữ chính của dự án là TypeScript  (từ S1-thong-nhat, 2026-10-21T16:50:39+00:00)
+[/INJECTED MEMORY]
+
+USER> Viết ngắn route handler đăng nhập (chỉ phần khung). Nói rõ bạn dùng database, ngôn ngữ, kiểu route và cơ chế auth nào.
+AGENT> **Cấu hình đang dùng** (theo quy ước dự án): TypeScript · PostgreSQL · route kebab-case số nhiều · auth JWT.
+
+Vì quy ước route là kebab-case số nhiều, login nên là tạo phiên: `POST /auth-sessions` (nếu bạn muốn `POST /auth/login` thì nói để mình đổi quy ước).
+
+```ts
+// src/routes/auth-sessions.ts
+import type { Request, Response } from 'express';
+import { pool } from '../db';          // PostgreSQL (pg)
+import { signAccessToken } from '../auth/jwt';
+import { verifyPassword } from '../auth/password';
+
+type LoginBody = { email: string; password: string };
+
+export async function createAuthSession(req: Request, res: Response) {
+  const { email, password } = req.body as LoginBody;
+
+  if (!email || !password) {
+    return res.status(400).json({ error: 'email and password are required' });
+  }
+
+  // TODO: rate limiting + log thất bại
+  const { rows } = await pool.query(
+    'SELECT id, password_hash FROM users WHERE email = $1 LIMIT 1',
+    [email],
+  );
+  const user = rows[0];
+
+  if (!user || !(await verifyPassword(password, user.password_hash))) {
+    return res.status(401).json({ error: 'invalid credentials' });
+  }
+
+  // TODO: ký JWT (sub, exp), refresh token, set cookie/httpOnly nếu cần
+  const accessToken = signAccessToken({ sub: user.id });
+  return res.status(201).json({ accessToken });
+}
+```
+
+Khung đăng ký route:
+
+```ts
+app.post('/auth-sessions', createAuthSession);
+```
+
+Ghi chú: chưa có refresh token / logout — cần thì mình bổ sung `DELETE /auth-sessions/:id`.
+
+========== S3-doi-quy-uoc ==========
+[INJECTED MEMORY]
+- [api_naming] API route đặt theo kebab-case dạng số nhiều, vd /user-profiles  (từ S1-thong-nhat, 2026-10-21T16:50:39+00:00)
+- [auth] Authentication dùng JWT  (từ S1-thong-nhat, 2026-10-21T16:50:39+00:00)
+- [database] Database dùng PostgreSQL  (từ S1-thong-nhat, 2026-10-21T16:50:39+00:00)
+- [language] Ngôn ngữ chính của dự án là TypeScript  (từ S1-thong-nhat, 2026-10-21T16:50:39+00:00)
+[/INJECTED MEMORY]
+
+USER> Team quyết định bỏ JWT, chuyển authentication sang session cookie (httpOnly, lưu session trong PostgreSQL).
+  [tool remember] Đã thay [auth]: 'Authentication dùng JWT' -> 'Authentication dùng session cookie httpOnly (không dùng JWT nữa), session lưu trong PostgreSQL'.
+AGENT> Đã ghi nhận: `auth` giờ là **session cookie httpOnly**, session lưu trong PostgreSQL (thay cho JWT). Các quy ước khác (PostgreSQL, TypeScript, kebab-case số nhiều cho API route) giữ nguyên.
+
+========== S4-chung-minh-2 ==========
+[INJECTED MEMORY]
+- [api_naming] API route đặt theo kebab-case dạng số nhiều, vd /user-profiles  (từ S1-thong-nhat, 2026-10-21T16:50:39+00:00)
+- [auth] Authentication dùng session cookie httpOnly (không dùng JWT nữa), session lưu trong PostgreSQL  (từ S3-doi-quy-uoc, 2026-10-21T16:50:47+00:00)
+- [database] Database dùng PostgreSQL  (từ S1-thong-nhat, 2026-10-21T16:50:39+00:00)
+- [language] Ngôn ngữ chính của dự án là TypeScript  (từ S1-thong-nhat, 2026-10-21T16:50:39+00:00)
+[/INJECTED MEMORY]
+
+USER> Viết ngắn middleware kiểm tra user đã đăng nhập. Nói rõ cơ chế auth bạn dùng.
+AGENT> ## Cơ chế auth đang dùng
+
+Theo quy ước dự án: **session cookie httpOnly**, session lưu trong **PostgreSQL** (không dùng JWT).
+
+- Đăng nhập → tạo record trong bảng `sessions` (id, user_id, expires_at) → set cookie `sid` với `httpOnly: true`, `secure`, `sameSite: 'lax'`.
+- Middleware chỉ đọc cookie `sid` → tra bảng `sessions` → gắn `req.user`.
+- Logout = xoá record + clear cookie (server-side revoke được ngay).
+
+## Middleware
+
+```ts
+// src/middleware/requireAuth.ts
+import type { Request, Response, NextFunction } from 'express';
+import { pool } from '../db';
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: { id: string; email: string };
+    }
+  }
+}
+
+export async function requireAuth(req: Request, res: Response, next: NextFunction) {
+  const sid = req.cookies?.sid;
+  if (!sid) return res.status(401).json({ error: 'unauthenticated' });
+
+  const { rows } = await pool.query(
+    `SELECT u.id, u.email
+       FROM sessions s
+       JOIN users u ON u.id = s.user_id
+      WHERE s.id = $1 AND s.expires_at > now()`,
+    [sid],
+  );
+
+  if (rows.length === 0) {
+    res.clearCookie('sid');
+    return res.status(401).json({ error: 'unauthenticated' });
+  }
+
+  req.user = rows[0];
+  next();
+}
+```
+
+Dùng: `app.get('/user-profiles', requireAuth, listProfiles)`.
+
+Ghi chú: session id nên là chuỗi random 256-bit (không phải user id); nên có job dọn `expires_at < now()` định kỳ.
+
+========== MEMORY CUỐI CÙNG (kể cả entry bị thay thế) ==========
+[
+  {
+    "id": "bc131527",
+    "key": "database",
+    "value": "Database dùng PostgreSQL",
+    "status": "active",
+    "created_at": "2026-10-21T16:50:39+00:00",
+    "source_session": "S1-thong-nhat"
+  },
+  {
+    "id": "f551b94c",
+    "key": "language",
+    "value": "Ngôn ngữ chính của dự án là TypeScript",
+    "status": "active",
+    "created_at": "2026-10-21T16:50:39+00:00",
+    "source_session": "S1-thong-nhat"
+  },
+  {
+    "id": "0ffce667",
+    "key": "api_naming",
+    "value": "API route đặt theo kebab-case dạng số nhiều, vd /user-profiles",
+    "status": "active",
+    "created_at": "2026-10-21T16:50:39+00:00",
+    "source_session": "S1-thong-nhat"
+  },
+  {
+    "id": "b41135b3",
+    "key": "auth",
+    "value": "Authentication dùng JWT",
+    "status": "superseded",
+    "created_at": "2026-10-21T16:50:39+00:00",
+    "source_session": "S1-thong-nhat",
+    "superseded_at": "2026-10-21T16:50:47+00:00",
+    "superseded_by": "9ccefade",
+    "superseded_in_session": "S3-doi-quy-uoc"
+  },
+  {
+    "id": "9ccefade",
+    "key": "auth",
+    "value": "Authentication dùng session cookie httpOnly (không dùng JWT nữa), session lưu trong PostgreSQL",
+    "status": "active",
+    "created_at": "2026-10-21T16:50:47+00:00",
+    "source_session": "S3-doi-quy-uoc",
+    "supersedes": "b41135b3"
+  }
+]
