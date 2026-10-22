@@ -137,30 +137,41 @@ gọi tool `remember` (dùng lại key có sẵn nếu đổi quy ước cũ) r�
 </project_memory>"""
 
 
-def run_session(prompts, session):
+def open_session(store):
+    """Mở session mới: history rỗng, memory active được inject vào system prompt. Trả về (client, messages)."""
     from openai import OpenAI
 
-    store = MemoryStore()
-    injected = store.render()
-    print(f"\n========== {session} ==========")
-    print("[INJECTED MEMORY]\n" + injected + "\n[/INJECTED MEMORY]")
-
     client = OpenAI(api_key=os.environ["DEEPSEEK_API_KEY"], base_url="https://api.deepseek.com")
-    messages = [{"role": "system", "content": SYSTEM.format(memory=injected)}]
+    return client, [{"role": "system", "content": SYSTEM.format(memory=store.render())}]
+
+
+def turn(client, store, messages, prompt, session):
+    """Một lượt chat (có thể gồm nhiều vòng tool call). Trả về (câu trả lời, danh sách log tool)."""
+    messages.append({"role": "user", "content": prompt})
+    log = []
+    while True:
+        msg = client.chat.completions.create(model=MODEL, messages=messages, tools=TOOLS).choices[0].message
+        # Gửi lại nguyên message (kể cả reasoning_content của thinking mode) để vòng tool call không bị lỗi.
+        messages.append(msg.model_dump(exclude_none=True))
+        if not msg.tool_calls:
+            return msg.content or "", log
+        for c in msg.tool_calls:
+            out = call_tool(store, c.function.name, c.function.arguments, session)
+            log.append(f"[tool {c.function.name}] {out}")
+            messages.append({"role": "tool", "tool_call_id": c.id, "content": out})
+
+
+def run_session(prompts, session):
+    store = MemoryStore()
+    print(f"\n========== {session} ==========")
+    print("[INJECTED MEMORY]\n" + store.render() + "\n[/INJECTED MEMORY]")
+    client, messages = open_session(store)
     for prompt in prompts:
         print(f"\nUSER> {prompt}")
-        messages.append({"role": "user", "content": prompt})
-        while True:
-            msg = client.chat.completions.create(model=MODEL, messages=messages, tools=TOOLS).choices[0].message
-            # Gửi lại nguyên message (kể cả reasoning_content của thinking mode) để vòng tool call không bị lỗi.
-            messages.append(msg.model_dump(exclude_none=True))
-            if not msg.tool_calls:
-                print("AGENT> " + (msg.content or ""))
-                break
-            for c in msg.tool_calls:
-                out = call_tool(store, c.function.name, c.function.arguments, session)
-                print(f"  [tool {c.function.name}] {out}")
-                messages.append({"role": "tool", "tool_call_id": c.id, "content": out})
+        reply, log = turn(client, store, messages, prompt, session)
+        for line in log:
+            print("  " + line)
+        print("AGENT> " + reply)
 
 
 def chat():

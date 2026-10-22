@@ -43,6 +43,12 @@ Demo chạy 4 process riêng, giữa các process chỉ có `memory.json` là d�
 
 Cuối demo chương trình in ra toàn bộ `memory.json`, có cả entry JWT cũ. Kết quả lần chạy thật nằm trong `demo_output.txt`, còn `memory.json` là memory sau lần chạy đó.
 
+## Giao diện web
+
+Nếu không muốn gõ lệnh thì chạy `python web.py` rồi mở http://127.0.0.1:8000. Bên trái là khung chat, bên phải là phần memory: khối đã inject vào context lúc mở session và danh sách toàn bộ entry (entry bị thay thế được gạch ngang kèm session đã thay nó).
+
+Nút "Session mới" xoá history chat nhưng vẫn giữ `memory.json`, nên có thể tự làm lại 2 chứng minh trên giao diện: chốt quy ước, bấm Session mới rồi hỏi, sau đó đổi quy ước, bấm Session mới và hỏi lại. Nút "Xoá memory" đưa `memory.json` về rỗng để làm lại từ đầu. Web dùng chung `memory.json` và cùng một agent với bản dòng lệnh. File `.env.example` là mẫu cho file `.env`.
+
 Ngoài ra còn `python agent.py` để chat, `python agent.py --say "..."` để hỏi một câu, và `python agent.py --show-memory` để xem toàn bộ memory.
 
 ## Giới hạn
