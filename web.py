@@ -62,7 +62,8 @@ function draw(s){
   $('sid').textContent='('+s.session+')';$('inj').textContent=s.injected;$('n').textContent=s.entries.length;
   $('ents').replaceChildren(...s.entries.map(e=>{const d=document.createElement('div');
     d.className='e'+(e.status==='active'?'':' old');
-    d.textContent='['+e.key+'] '+e.value+'  ('+e.source_session+')'+(e.status==='superseded'?' → bị thay ở '+e.superseded_in_session:e.status==='forgotten'?' → đã quên':'');return d}));
+    d.textContent=(e.status==='active'?'ĐANG DÙNG ':e.status==='superseded'?'CŨ ':'ĐÃ QUÊN ')+'['+e.key+'] '+e.value+'  (ghi ở '+e.source_session+')'
+      +(e.status==='superseded'?' → đã bị quy ước mới thay thế ở '+e.superseded_in_session:e.status==='forgotten'?' → đã quên ở '+e.forgotten_in_session:'');return d}));
 }
 async function api(path,body){const r=await fetch(path,{method:body===undefined?'GET':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});
   const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j}
