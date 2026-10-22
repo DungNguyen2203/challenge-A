@@ -1,5 +1,15 @@
 # Challenge A: persistent memory
 
+Bài làm của nhóm 17.
+
+| STT | MSSV | Họ và tên |
+|---|---|---|
+| 81 | 24520343 | Nguyễn Trung Dũng |
+| 82 | 24520352 | Trương Đình Việt Dũng |
+| 83 | 24520398 | Trần Đình Duy |
+| 84 | 24521140 | Võ Hoàng Nghi |
+| 85 | 24521040 | Bùi Duy Mạnh |
+
 Bài này làm một agent nhớ được quy ước của dự án qua nhiều session, và khi quy ước đổi thì các session sau dùng quy ước mới. Code nằm hết trong `agent.py`.
 
 ## Thiết kế
